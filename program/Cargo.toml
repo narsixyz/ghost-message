@@ -1,0 +1,26 @@
+[package]
+name = "ghost-message"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+# cdylib only: `cdylib` + `lib` disables LTO. Nothing imports this crate.
+crate-type = ["cdylib"]
+
+[dependencies]
+# No default features: no heap allocator (`alloc`). `cpi` gives Seed/Signer.
+pinocchio = { version = "0.12", default-features = false, features = ["cpi"] }
+pinocchio-system = "0.7"
+solana-program-log = "1.2"
+# MagicBlock CPIs (delegate, commit/undelegate, permissions) will be hand-encoded like
+# cyphers-program-v1/program/src/utils/magicblock.rs: `ephemeral-rollups-pinocchio` 0.17.3
+# needs pinocchio 0.11 + `alloc`, which cannot share a build with pinocchio 0.12 / no_allocator.
+
+# Host builds only (rust-analyzer, `cargo check`): `Address::find_program_address`
+# uses a syscall on-chain but needs the curve25519 feature off-chain.
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+solana-address = { version = "2.9", features = ["curve25519"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
