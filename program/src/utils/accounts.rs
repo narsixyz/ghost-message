@@ -83,3 +83,14 @@ pub fn create_pda_account(
     .invoke_signed(signers)?;
     Assign { account, owner }.invoke_signed(signers)
 }
+
+/// Moves all lamports from a program-owned `account` to `recipient` and closes it.
+pub fn close_account(account: &mut AccountView, recipient: &mut AccountView) -> ProgramResult {
+    let lamports = recipient
+        .lamports()
+        .checked_add(account.lamports())
+        .ok_or(ProgramError::ArithmeticOverflow)?;
+    recipient.set_lamports(lamports);
+    account.set_lamports(0);
+    account.close()
+}

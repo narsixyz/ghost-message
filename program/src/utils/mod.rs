@@ -2,4 +2,5 @@
 
 pub mod accounts;
 pub mod data;
+pub mod magicblock;
 pub mod session;

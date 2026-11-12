@@ -129,7 +129,8 @@ fn session_keys_join_send_and_close_for_both_members() {
         ctx.close_via(&cs.key, &room, Some(&cs.token)).unwrap();
         let d = ctx.room(&room);
         assert_eq!(d[OFF_STATUS], CLOSED);
-        assert!(d[OFF_GUEST..].iter().all(|b| *b == 0));
+        assert!(d[OFF_GUEST..OFF_ROOM_ID].iter().all(|b| *b == 0));
+        assert!(d[OFF_EXPIRES..].iter().all(|b| *b == 0));
     }
 }
 

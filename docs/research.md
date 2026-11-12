@@ -171,11 +171,12 @@ One PDA per room: `["room", creator, room_id: u64]`. It's a fixed size, because 
 | 40 | 32 | guest (zero until `OpenRoom`) |
 | 72 | 32 | creator X25519 box public key |
 | 104 | 32 | guest X25519 box public key (zero until `JoinRoom`) |
-| 136 | 8 | `expires_at` (i64, unix) |
-| 144 | 8 | `next_seq` (u64) |
-| 152 | 16 × 256 | messages: `seq u64, sender u8 (0 creator / 1 guest), kind u8, len u16, nonce[24], ciphertext[220]` |
+| 136 | 8 | `room_id` (u64, PDA seed so the room can sign its CPIs) |
+| 144 | 8 | `expires_at` (i64, unix) |
+| 152 | 8 | `next_seq` (u64) |
+| 160 | 16 × 256 | messages: `seq u64, sender u8 (0 creator / 1 guest), kind u8, len u16, nonce[24], ciphertext[220]` |
 
-The total is 4,248 bytes. `kind` is 0 for text, 1 for a payment note and 2 for a shielded address. A ciphertext of 220 bytes holds 204 bytes of plaintext plus a 16-byte MAC. The 17th message overwrites the oldest. There's no history indexing, and that's intentional.
+The total is 4,256 bytes. `kind` is 0 for text, 1 for a payment note and 2 for a shielded address. A ciphertext of 220 bytes holds 204 bytes of plaintext plus a 16-byte MAC. The 17th message overwrites the oldest. There's no history indexing, and that's intentional.
 
 ### 4.2 Instructions
 
@@ -238,7 +239,7 @@ The two steps can fail independently: the payment can land without the note, or 
    - How quickly does a revoke on Solana reach the ER?
 3. **v1 transactions on the ER.** Does `ephemeral-validator` 1.1.1 or the TEE endpoint accept v1 (`VersionedMessage::V1`) transactions? If not, ER transactions use v0 and only Solana transactions use v1.
 4. **Fee payer in the ER.** ER transactions cost 0. Does the session signer still need to exist with lamports in the ER to act as fee payer?
-5. **Permission with two members.** cyphers' encoder writes one member. Confirm the wire format for several members (`9 + 33·n` bytes?) against `ephemeral-rollups-pinocchio` 0.17.3.
+5. **Permission with two members.** ~~Confirm the wire format~~ **Answered:** `u64 6 | is_private | (flags, pubkey)*`, no count, `9 + 33·n` bytes (`ephemeral-rollups-pinocchio` 0.17.3). See `phases/phase-3-magicblock.md`.
 6. **Transaction visibility.** Is the `OpenRoom` transaction message (it carries the guest's key) hidden from people who aren't members? Probe it with the QFS, the way cyphers' `PRIVATE=1` run did.
 7. **Two local stacks.** MagicBlock needs `mb-stack` (its own base validator). Helius needs surfpool + Photon + prover (`zolana dev artifacts`). They don't share a base chain locally, so the joined flow can only be tested on **devnet**. Both live on Solana devnet.
 8. **Session program locally.** `mb-test-validator` must load `KeyspM...`: dump it from devnet like the delegation program.
@@ -250,7 +251,7 @@ The two steps can fail independently: the payment can land without the note, or 
 | 0 | Scaffold (**done**) | Pinocchio 0.12, SBPF v3, LiteSVM v1 tests pass |
 | 1 | Room logic without MagicBlock (**done**) | `CreateRoom`, `OpenRoom` (no CPI yet), `JoinRoom`, `SendMessage`, `CloseRoom` with direct signers; LiteSVM tests for every auth and status error, ring wrap-around, expiry |
 | 2 | Session keys (**done**) | `actor` helper; LiteSVM tests with a hand-made token account (wrong owner, wrong PDA, expired, wrong target program, other user's token) |
-| 3 | MagicBlock | Port `magicblock.rs` from cyphers; delegate test with `delegation_program.so`; then a TypeScript e2e on `mb-stack`: two wallets, session keys, private reads through the QFS, a non-member gets nothing. Answers questions 1–6 |
+| 3 | MagicBlock (**in progress**) | Port `magicblock.rs` from cyphers; delegate test with `delegation_program.so`; then a TypeScript e2e on `mb-stack`: two wallets, session keys, private reads through the QFS, a non-member gets nothing. Answers questions 1–6 |
 | 4 | Helius payment | Register B, deposit, private transfer A→B, B syncs; `kind = 1`/`2` messages; on devnet |
 | 5 | Devnet end-to-end | Devnet TEE (`verifyTeeRpcIntegrity` for real) + Helius devnet, one full scenario. A minimal CLI client, not a complex frontend |
 | 6 | Article | "GhostMessage: building private messaging and payments on Solana with MagicBlock and Helius Privacy Rings", from the research log |

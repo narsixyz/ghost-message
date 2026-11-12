@@ -1,0 +1,20 @@
+[package]
+name = "cpi-recorder"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Test-only program. LiteSVM loads it at the permission program and Magic program addresses,
+# which only exist inside a MagicBlock ER, so the tests can check the exact CPI each instruction
+# sends (data bytes, account order, signer and writable flags).
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pinocchio = { version = "0.12", default-features = false }
+solana-program-log = "1.2"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

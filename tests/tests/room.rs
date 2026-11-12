@@ -24,7 +24,8 @@ use solana_transaction::{InstructionError, TransactionError, versioned::Versione
 fn unknown_or_unimplemented_instructions_fail() {
     let mut ctx = setup();
     let payer = ctx.creator.insecure_clone();
-    for data in [vec![], vec![1], vec![6], vec![7], vec![8], vec![255]] {
+    // 1, 6, 7 now exist but need accounts; 8, 255 and a wrong callback prefix are unknown.
+    for data in [vec![], vec![8], vec![255], vec![196, 0, 0, 0, 0, 0, 0, 0]] {
         let ix = Instruction::new_with_bytes(ctx.program_id, &data, vec![]);
         assert_eq!(
             send(&mut ctx.svm, ix, &[&payer]).unwrap_err(),
@@ -55,8 +56,10 @@ fn create_room_initializes_layout() {
     assert_eq!(d[1], bump);
     assert_eq!(d[OFF_STATUS], CREATED);
     assert_eq!(bytes32(d, OFF_CREATOR), ctx.creator.pubkey().as_ref());
-    // Nothing but discriminator, bump, status and creator is set.
-    assert!(d[OFF_GUEST..].iter().all(|b| *b == 0));
+    assert_eq!(read_u64(d, OFF_ROOM_ID), 42);
+    // Nothing but discriminator, bump, status, creator and room id is set.
+    assert!(d[OFF_GUEST..OFF_ROOM_ID].iter().all(|b| *b == 0));
+    assert!(d[OFF_EXPIRES..].iter().all(|b| *b == 0));
 
     // Rent exemption + permission rent for [creator, guest]: (35 + 3·33 + 60) · 32.
     let rent = ctx.svm.minimum_balance_for_rent_exemption(ROOM_LEN);
@@ -245,12 +248,9 @@ fn open_room_rejects_foreign_account() {
 fn open_room_rejects_trailing_data() {
     let mut ctx = setup();
     let room = ctx.create(1);
-    let mut data = vec![2];
-    data.extend_from_slice(ctx.guest.pubkey().as_ref());
-    data.extend_from_slice(&CREATOR_BOX);
-    data.extend_from_slice(&(T0 + TTL).to_le_bytes());
+    let mut data = Ctx::open_data(&ctx.guest.pubkey(), CREATOR_BOX, T0 + TTL);
     data.push(0);
-    let ix = ctx.room_ix(&ctx.creator.pubkey(), &room, data);
+    let ix = ctx.permission_ix(&ctx.creator.pubkey(), &room, None, data);
     let creator = ctx.creator.insecure_clone();
     assert_eq!(
         send(&mut ctx.svm, ix, &[&creator]).unwrap_err(),
@@ -482,8 +482,9 @@ fn assert_wiped(ctx: &Ctx, room: &Address) {
     assert_eq!(d[0], 1);
     assert_eq!(d[OFF_STATUS], CLOSED);
     assert_eq!(bytes32(&d, OFF_CREATOR), ctx.creator.pubkey().as_ref());
+    assert_eq!(read_u64(&d, OFF_ROOM_ID), 1, "room id is a public seed and stays");
     assert!(
-        d[OFF_GUEST..].iter().all(|b| *b == 0),
+        d[OFF_GUEST..OFF_ROOM_ID].iter().all(|b| *b == 0) && d[OFF_EXPIRES..].iter().all(|b| *b == 0),
         "guest, box keys, expiry, seq and messages must be zero"
     );
 }
@@ -578,7 +579,7 @@ fn closed_room_is_terminal() {
 fn close_room_rejects_instruction_data() {
     let mut ctx = setup();
     let room = ctx.create(1);
-    let ix = ctx.room_ix(&ctx.creator.pubkey(), &room, vec![5, 0]);
+    let ix = ctx.permission_ix(&ctx.creator.pubkey(), &room, None, vec![5, 0]);
     let creator = ctx.creator.insecure_clone();
     assert_eq!(
         send(&mut ctx.svm, ix, &[&creator]).unwrap_err(),

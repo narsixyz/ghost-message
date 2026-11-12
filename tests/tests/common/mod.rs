@@ -13,6 +13,11 @@ use solana_signer::Signer;
 use solana_transaction::{InstructionError, TransactionError, versioned::VersionedTransaction};
 
 pub const PROGRAM_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/ghost_message.so");
+/// Test-only recorder loaded at the permission and Magic program addresses (see
+/// `test-programs/cpi-recorder`).
+pub const RECORDER_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/cpi_recorder.so");
+/// MagicBlock delegation program dumped from devnet.
+pub const DELEGATION_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/delegation_program.so");
 /// `gpl_session` dumped from devnet: `solana program dump -u devnet KeyspM2ss... session_keys.so`.
 pub const SESSION_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/session_keys.so");
 pub const SYSTEM_PROGRAM: Address = Address::new_from_array([0; 32]);
@@ -24,19 +29,31 @@ pub const CONFIG: v1::TransactionConfig = v1::TransactionConfig::empty()
     .with_loaded_accounts_data_size_limit(2 * 1024 * 1024)
     .with_priority_fee(1_000);
 
+// MagicBlock.
+pub const DELEGATION_PROGRAM: Address = Address::from_str_const("DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh");
+pub const PERMISSION_PROGRAM: Address = Address::from_str_const("ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1");
+pub const MAGIC_PROGRAM: Address = Address::from_str_const("Magic11111111111111111111111111111111111111");
+pub const MAGIC_CONTEXT: Address = Address::from_str_const("MagicContext1111111111111111111111111111111");
+pub const EPHEMERAL_VAULT: Address = Address::from_str_const("MagicVau1t999999999999999999999999999999999");
+pub const TEE_VALIDATOR: Address = Address::from_str_const("MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo");
+pub const UNDELEGATE_CALLBACK: [u8; 8] = [196, 28, 41, 206, 48, 37, 51, 167];
+/// TX_LOGS | TX_BALANCES | TX_MESSAGE | ACCOUNT_SIGNATURES
+pub const MEMBER_FLAGS: u8 = 0b1_1110;
+
 pub const T0: i64 = 1_800_000_000;
 pub const TTL: i64 = 3_600;
 
 // Room layout (see program/src/state.rs).
-pub const ROOM_LEN: usize = 4248;
+pub const ROOM_LEN: usize = 4256;
 pub const OFF_STATUS: usize = 2;
 pub const OFF_CREATOR: usize = 8;
 pub const OFF_GUEST: usize = 40;
 pub const OFF_CREATOR_BOX: usize = 72;
 pub const OFF_GUEST_BOX: usize = 104;
-pub const OFF_EXPIRES: usize = 136;
-pub const OFF_NEXT_SEQ: usize = 144;
-pub const OFF_MESSAGES: usize = 152;
+pub const OFF_ROOM_ID: usize = 136;
+pub const OFF_EXPIRES: usize = 144;
+pub const OFF_NEXT_SEQ: usize = 152;
+pub const OFF_MESSAGES: usize = 160;
 pub const SLOT_LEN: usize = 256;
 pub const SLOTS: usize = 16;
 
@@ -139,6 +156,13 @@ pub fn setup() -> Ctx {
     svm.add_program(program_id, &so).unwrap();
     let session_so = std::fs::read(SESSION_SO).unwrap_or_else(|e| panic!("{SESSION_SO}: {e}"));
     svm.add_program(SESSION_PROGRAM, &session_so).unwrap();
+    let dlp = std::fs::read(DELEGATION_SO).unwrap_or_else(|e| panic!("{DELEGATION_SO}: {e}"));
+    svm.add_program(DELEGATION_PROGRAM, &dlp).unwrap();
+    let recorder = std::fs::read(RECORDER_SO).unwrap_or_else(|e| {
+        panic!("{RECORDER_SO}: {e}. Run `cargo build-sbf --tools-version v1.58 --arch v3` first")
+    });
+    svm.add_program(PERMISSION_PROGRAM, &recorder).unwrap();
+    svm.add_program(MAGIC_PROGRAM, &recorder).unwrap();
     let (creator, guest, stranger) = (Keypair::new(), Keypair::new(), Keypair::new());
     for key in [&creator, &guest, &stranger] {
         svm.airdrop(&key.pubkey(), 10_000_000_000).unwrap();
@@ -166,6 +190,15 @@ pub fn send(svm: &mut LiteSVM, ix: Instruction, signers: &[&Keypair]) -> Result<
 
 /// Like `send`, returning the compute units consumed.
 pub fn send_cu(svm: &mut LiteSVM, ix: Instruction, signers: &[&Keypair]) -> Result<u64, TransactionError> {
+    send_logs(svm, ix, signers).map(|(cu, _)| cu)
+}
+
+/// Like `send`, returning the compute units consumed and the transaction logs.
+pub fn send_logs(
+    svm: &mut LiteSVM,
+    ix: Instruction,
+    signers: &[&Keypair],
+) -> Result<(u64, Vec<String>), TransactionError> {
     let message = v1::Message::try_compile_with_config(
         &signers[0].pubkey(),
         &[ix],
@@ -176,10 +209,65 @@ pub fn send_cu(svm: &mut LiteSVM, ix: Instruction, signers: &[&Keypair]) -> Resu
     let tx = VersionedTransaction::try_new(VersionedMessage::V1(message), signers).unwrap();
     let result = svm
         .send_transaction(tx)
-        .map(|meta| meta.compute_units_consumed)
+        .map(|meta| (meta.compute_units_consumed, meta.logs))
         .map_err(|e| e.err);
     svm.expire_blockhash();
     result
+}
+
+/// One CPI the recorder received.
+#[derive(Debug)]
+pub struct Recorded {
+    pub program: Address,
+    pub data: Vec<u8>,
+    /// `(address, is_signer, is_writable)` in instruction order.
+    pub accounts: Vec<(Address, bool, bool)>,
+}
+
+/// Extracts the recorder's `Program data:` entries from transaction logs, attributing each to
+/// the program that was invoked at that point.
+pub fn recorded(logs: &[String]) -> Vec<Recorded> {
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD;
+    let mut stack: Vec<Address> = Vec::new();
+    let mut out = Vec::new();
+    for line in logs {
+        if let Some(rest) = line.strip_prefix("Program ") {
+            let mut words = rest.split_whitespace();
+            let first = words.next().unwrap_or_default();
+            match (first, words.next()) {
+                ("data:", _) => {
+                    let parts: Vec<Vec<u8>> = rest["data:".len()..]
+                        .split_whitespace()
+                        .map(|p| b64.decode(p).unwrap())
+                        .collect();
+                    let accounts = parts[1]
+                        .as_chunks::<34>()
+                        .0
+                        .iter()
+                        .map(|c| {
+                            (
+                                Address::new_from_array(c[..32].try_into().unwrap()),
+                                c[32] == 1,
+                                c[33] == 1,
+                            )
+                        })
+                        .collect();
+                    out.push(Recorded {
+                        program: *stack.last().unwrap(),
+                        data: parts[0].clone(),
+                        accounts,
+                    });
+                }
+                (id, Some("invoke")) => stack.push(id.parse().unwrap()),
+                (_, Some("success")) | (_, Some("failed:")) => {
+                    stack.pop();
+                }
+                _ => {}
+            }
+        }
+    }
+    out
 }
 
 pub fn custom(code: u32) -> TransactionError {
@@ -239,6 +327,40 @@ impl Ctx {
         Instruction::new_with_bytes(self.program_id, &data, accounts)
     }
 
+    pub fn permission_address(room: &Address) -> Address {
+        Address::find_program_address(&[b"permission:", room.as_ref()], &PERMISSION_PROGRAM).0
+    }
+
+    /// `[signer, room, permission, vault, magic_program, permission_program]` + optional token.
+    pub fn permission_ix(
+        &self,
+        signer: &Address,
+        room: &Address,
+        token: Option<&Address>,
+        data: Vec<u8>,
+    ) -> Instruction {
+        let mut accounts = vec![
+            AccountMeta::new_readonly(*signer, true),
+            AccountMeta::new(*room, false),
+            AccountMeta::new(Self::permission_address(room), false),
+            AccountMeta::new(EPHEMERAL_VAULT, false),
+            AccountMeta::new_readonly(MAGIC_PROGRAM, false),
+            AccountMeta::new_readonly(PERMISSION_PROGRAM, false),
+        ];
+        if let Some(token) = token {
+            accounts.push(AccountMeta::new_readonly(*token, false));
+        }
+        Instruction::new_with_bytes(self.program_id, &data, accounts)
+    }
+
+    pub fn open_data(guest: &Address, box_pk: [u8; 32], expires_at: i64) -> Vec<u8> {
+        let mut data = vec![2];
+        data.extend_from_slice(guest.as_ref());
+        data.extend_from_slice(&box_pk);
+        data.extend_from_slice(&expires_at.to_le_bytes());
+        data
+    }
+
     pub fn create(&mut self, room_id: u64) -> Address {
         let room = self.room_address(&self.creator.pubkey(), room_id);
         let ix = self.create_ix(&self.creator.pubkey(), &room, room_id);
@@ -266,11 +388,12 @@ impl Ctx {
         box_pk: [u8; 32],
         expires_at: i64,
     ) -> Result<(), TransactionError> {
-        let mut data = vec![2];
-        data.extend_from_slice(guest.as_ref());
-        data.extend_from_slice(&box_pk);
-        data.extend_from_slice(&expires_at.to_le_bytes());
-        let ix = self.room_ix_via(&signer.pubkey(), room, token, data);
+        let ix = self.permission_ix(
+            &signer.pubkey(),
+            room,
+            token,
+            Self::open_data(guest, box_pk, expires_at),
+        );
         send(&mut self.svm, ix, &[signer])
     }
 
@@ -354,7 +477,7 @@ impl Ctx {
         room: &Address,
         token: Option<&Address>,
     ) -> Result<(), TransactionError> {
-        let ix = self.room_ix_via(&signer.pubkey(), room, token, vec![5]);
+        let ix = self.permission_ix(&signer.pubkey(), room, token, vec![5]);
         send(&mut self.svm, ix, &[signer])
     }
 

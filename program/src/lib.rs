@@ -1,19 +1,20 @@
 //! GhostMessage program: temporary two-person chat rooms with client-side encrypted messages.
 //! Design: `docs/research.md`.
 //!
-//! Phases 1–2: room logic, plus session keys for `JoinRoom`, `SendMessage` and `CloseRoom`
-//! (`utils::session`). No MagicBlock CPIs yet.
+//! Session keys (`utils::session`) work for `JoinRoom`, `SendMessage` and `CloseRoom`. MagicBlock
+//! CPIs (`utils::magicblock`) are hand-encoded.
 //!
-//! | Discriminator | Instruction | Runs on | Status |
-//! |---|---|---|---|
-//! | 0 | `CreateRoom(room_id)` | Solana | implemented |
-//! | 1 | `DelegateRoom` | Solana | phase 3 |
-//! | 2 | `OpenRoom(guest, creator_box_pk, expires_at)` | PER | implemented, no permission CPI yet |
-//! | 3 | `JoinRoom(guest_box_pk)` | PER | implemented |
-//! | 4 | `SendMessage(kind, nonce, ciphertext)` | PER | implemented |
-//! | 5 | `CloseRoom` | PER | implemented |
-//! | 6 | `UndelegateRoom` | PER | phase 3 |
-//! | 7 | `ReclaimRoom` | Solana | phase 3 |
+//! | Discriminator | Instruction | Runs on |
+//! |---|---|---|
+//! | 0 | `CreateRoom(room_id)` | Solana |
+//! | 1 | `DelegateRoom` | Solana |
+//! | 2 | `OpenRoom(guest, creator_box_pk, expires_at)` + private permission | PER |
+//! | 3 | `JoinRoom(guest_box_pk)` | PER |
+//! | 4 | `SendMessage(kind, nonce, ciphertext)` | PER |
+//! | 5 | `CloseRoom` + close permission | PER (Solana if never opened) |
+//! | 6 | `UndelegateRoom` | PER |
+//! | 7 | `ReclaimRoom` | Solana |
+//! | `[196, 28, 41, 206, 48, 37, 51, 167]` | `ProcessUndelegation` (delegation program callback) | Solana |
 #![no_std]
 
 pub mod constants;
@@ -41,10 +42,18 @@ pub fn process_instruction(
         .ok_or(ProgramError::InvalidInstructionData)?;
     match *discriminator {
         0 => instructions::create_room(program_id, accounts, data),
+        1 => instructions::delegate_room(program_id, accounts, data),
         2 => instructions::open_room(program_id, accounts, data),
         3 => instructions::join_room(program_id, accounts, data),
         4 => instructions::send_message(program_id, accounts, data),
         5 => instructions::close_room(program_id, accounts, data),
-        _ => Err(ProgramError::InvalidInstructionData),
+        6 => instructions::undelegate_room(program_id, accounts, data),
+        7 => instructions::reclaim_room(program_id, accounts, data),
+        _ => {
+            let rest = instruction_data
+                .strip_prefix(&utils::magicblock::UNDELEGATE_CALLBACK_DISCRIMINATOR)
+                .ok_or(ProgramError::InvalidInstructionData)?;
+            instructions::process_undelegation(program_id, accounts, rest)
+        }
     }
 }

@@ -1,5 +1,5 @@
 [workspace]
-members = ["program"]
+members = ["program", "test-programs/cpi-recorder"]
 # tests/ is a separate workspace with its own Cargo.lock.
 exclude = ["tests"]
 resolver = "3"

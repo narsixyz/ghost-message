@@ -78,5 +78,6 @@ pub fn create_room(program_id: &Address, accounts: &mut [AccountView], data: &[u
     r.bump = bump;
     r.status = status::CREATED;
     r.creator = Address::new_from_array(creator.address().to_bytes());
+    r.set_room_id(room_id);
     Ok(())
 }

@@ -1,4 +1,4 @@
-//! `Room` account. PDA `["room", creator, room_id u64 LE]`, 4,248 bytes, fixed size (a
+//! `Room` account. PDA `["room", creator, room_id u64 LE]`, 4,256 bytes, fixed size (a
 //! delegated account can't be resized safely).
 //!
 //! All fields have alignment 1 (numbers are little-endian byte arrays), so casting account data
@@ -14,9 +14,10 @@
 //! | 40 | 32 | guest (zero until `OpenRoom`) |
 //! | 72 | 32 | creator X25519 box public key |
 //! | 104 | 32 | guest X25519 box public key (zero until `JoinRoom`) |
-//! | 136 | 8 | expires_at (`i64`, unix; zero until `OpenRoom`) |
-//! | 144 | 8 | next_seq (`u64`) |
-//! | 152 | 16 × 256 | messages (ring buffer, slot = `seq % 16`) |
+//! | 136 | 8 | room_id (`u64`; the PDA seed, so the room can sign its own CPIs) |
+//! | 144 | 8 | expires_at (`i64`, unix; zero until `OpenRoom`) |
+//! | 152 | 8 | next_seq (`u64`) |
+//! | 160 | 16 × 256 | messages (ring buffer, slot = `seq % 16`) |
 //!
 //! Message slot (256 bytes):
 //!
@@ -78,16 +79,25 @@ pub struct Room {
     pub guest: Address,
     pub creator_box_pk: [u8; 32],
     pub guest_box_pk: [u8; 32],
+    room_id: [u8; 8],
     expires_at: [u8; 8],
     next_seq: [u8; 8],
     pub messages: [Message; MESSAGE_SLOTS],
 }
 
-const _: () = assert!(size_of::<Room>() == 4248 && align_of::<Room>() == 1);
+const _: () = assert!(size_of::<Room>() == 4256 && align_of::<Room>() == 1);
 
 impl Room {
     pub const DISCRIMINATOR: u8 = 1;
     pub const LEN: usize = size_of::<Self>();
+
+    pub fn room_id(&self) -> u64 {
+        u64::from_le_bytes(self.room_id)
+    }
+
+    pub fn set_room_id(&mut self, value: u64) {
+        self.room_id = value.to_le_bytes();
+    }
 
     pub fn expires_at(&self) -> i64 {
         i64::from_le_bytes(self.expires_at)
@@ -105,11 +115,26 @@ impl Room {
         self.next_seq = value.to_le_bytes();
     }
 
+    /// PDA seed material: `(creator, room_id LE, [bump])`. Build the signer seeds as
+    /// `[ROOM_SEED, creator, room_id, bump]`.
+    pub fn seed_parts(&self) -> ([u8; 32], [u8; 8], [u8; 1]) {
+        (self.creator.to_bytes(), self.room_id, [self.bump])
+    }
+
     /// Expired once `OpenRoom` has set an expiry and it has passed. A room that was never
     /// opened (`expires_at == 0`) does not expire.
     pub fn is_expired(&self, now: i64) -> bool {
         let expires_at = self.expires_at();
         expires_at != 0 && now >= expires_at
+    }
+
+    /// Read-only view of an existing room. The caller checks the owner first.
+    pub fn load(data: &[u8]) -> Result<&Self, ProgramError> {
+        if data.len() != Self::LEN || data[0] != Self::DISCRIMINATOR {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        // SAFETY: length checked; alignment 1 (asserted); every bit pattern is valid.
+        Ok(unsafe { &*(data.as_ptr() as *const Self) })
     }
 
     /// Mutable view of an existing room. The caller checks the owner first.
@@ -132,7 +157,8 @@ impl Room {
     }
 
     /// Zeroes everything a non-member must never see after undelegation: guest, box keys,
-    /// expiry, message count, and every message slot.
+    /// expiry, message count, and every message slot. Keeps `creator` and `room_id`: they are
+    /// the public PDA seeds (already visible in `CreateRoom`).
     pub fn wipe_private(&mut self) {
         self.guest = Address::new_from_array([0; 32]);
         self.creator_box_pk = [0; 32];
