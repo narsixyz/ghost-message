@@ -28,6 +28,14 @@ pub enum GhostError {
     InvalidSessionToken = 9,
     /// The session token has expired (`now >= valid_until`).
     SessionExpired = 10,
+    /// `RefundPayment` before the deadline (`now <= deadline`).
+    PaymentNotRefundable = 11,
+    /// The payment-authority seeds and bump derive no program address.
+    InvalidPaymentAuthority = 12,
+    /// The `transact` account list does not target the Solana Privacy Program.
+    InvalidPrivacyProgram = 13,
+    /// The payment-authority PDA is not among the `transact` accounts.
+    MissingPaymentAuthority = 14,
 }
 
 impl From<GhostError> for ProgramError {

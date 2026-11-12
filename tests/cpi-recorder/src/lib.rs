@@ -14,7 +14,8 @@ program_entrypoint!(process_instruction);
 no_allocator!();
 nostd_panic_handler!();
 
-const MAX_ACCOUNTS: usize = 8;
+// SPP `transact` CPIs from ClaimPayment/RefundPayment carry up to 24 accounts.
+const MAX_ACCOUNTS: usize = 24;
 
 pub fn process_instruction(
     _program_id: &Address,

@@ -3,6 +3,10 @@
 /// Room PDA seed: `["room", creator, room_id u64 LE]`.
 pub const ROOM_SEED: &[u8] = b"room";
 
+/// Payment-authority PDA seed: `["payment", payer, recipient, deadline i64 LE]`. The PDA owns
+/// private (Privacy Rings) funds; see `instructions::payment`.
+pub const PAYMENT_SEED: &[u8] = b"payment";
+
 /// Number of message slots in a room's ring buffer.
 pub const MESSAGE_SLOTS: usize = 16;
 /// Largest ciphertext a slot holds: 204 bytes of plaintext + the 16-byte NaCl `box` MAC.

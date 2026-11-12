@@ -2,7 +2,8 @@
 //! Design: `docs/research.md`.
 //!
 //! Session keys (`utils::session`) work for `JoinRoom`, `SendMessage` and `CloseRoom`. MagicBlock
-//! CPIs (`utils::magicblock`) are hand-encoded.
+//! CPIs (`utils::magicblock`) and the Helius Privacy Rings `transact` CPI (`utils::privacy`) are
+//! hand-encoded.
 //!
 //! | Discriminator | Instruction | Runs on |
 //! |---|---|---|
@@ -14,6 +15,8 @@
 //! | 5 | `CloseRoom` + close permission | PER (Solana if never opened) |
 //! | 6 | `UndelegateRoom` | PER |
 //! | 7 | `ReclaimRoom` | Solana |
+//! | 8 | `ClaimPayment(payer, deadline, bump, transact)`: recipient spends the PDA's private funds via SPP CPI | Solana |
+//! | 9 | `RefundPayment(recipient, deadline, bump, transact)`: payer takes them back after the deadline | Solana |
 //! | `[196, 28, 41, 206, 48, 37, 51, 167]` | `ProcessUndelegation` (delegation program callback) | Solana |
 #![no_std]
 
@@ -49,6 +52,8 @@ pub fn process_instruction(
         5 => instructions::close_room(program_id, accounts, data),
         6 => instructions::undelegate_room(program_id, accounts, data),
         7 => instructions::reclaim_room(program_id, accounts, data),
+        8 => instructions::claim_payment(program_id, accounts, data),
+        9 => instructions::refund_payment(program_id, accounts, data),
         _ => {
             let rest = instruction_data
                 .strip_prefix(&utils::magicblock::UNDELEGATE_CALLBACK_DISCRIMINATOR)

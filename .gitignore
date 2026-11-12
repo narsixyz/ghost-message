@@ -3,3 +3,6 @@ target
 # RPC URLs with API keys
 .env
 node_modules
+
+# Article draft (kept local)
+docs/article.md

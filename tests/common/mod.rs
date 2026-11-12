@@ -13,7 +13,7 @@ use solana_signer::Signer;
 use solana_transaction::{InstructionError, TransactionError, versioned::VersionedTransaction};
 
 pub const PROGRAM_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/ghost_message.so");
-/// Test-only recorder loaded at the permission and Magic program addresses (see
+/// Test-only recorder loaded at the permission, Magic and Privacy (SPP) program addresses (see
 /// `tests/cpi-recorder`).
 pub const RECORDER_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/cpi_recorder.so");
 /// MagicBlock delegation program dumped from devnet.
@@ -36,6 +36,9 @@ pub const MAGIC_PROGRAM: Address = Address::from_str_const("Magic111111111111111
 pub const MAGIC_CONTEXT: Address = Address::from_str_const("MagicContext1111111111111111111111111111111");
 pub const EPHEMERAL_VAULT: Address = Address::from_str_const("MagicVau1t999999999999999999999999999999999");
 pub const TEE_VALIDATOR: Address = Address::from_str_const("MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo");
+// Helius Privacy Rings.
+pub const SPP_PROGRAM: Address = Address::from_str_const("ring1GaLCuJnkUMVkX2JeZLTTX17wKsV4fZmPVzXANW");
+pub const SPP_TRANSACT_TAG: u8 = 16;
 pub const UNDELEGATE_CALLBACK: [u8; 8] = [196, 28, 41, 206, 48, 37, 51, 167];
 /// TX_LOGS | TX_BALANCES | TX_MESSAGE | ACCOUNT_SIGNATURES
 pub const MEMBER_FLAGS: u8 = 0b1_1110;
@@ -163,6 +166,7 @@ pub fn setup() -> Ctx {
     });
     svm.add_program(PERMISSION_PROGRAM, &recorder).unwrap();
     svm.add_program(MAGIC_PROGRAM, &recorder).unwrap();
+    svm.add_program(SPP_PROGRAM, &recorder).unwrap();
     let (creator, guest, stranger) = (Keypair::new(), Keypair::new(), Keypair::new());
     for key in [&creator, &guest, &stranger] {
         svm.airdrop(&key.pubkey(), 10_000_000_000).unwrap();

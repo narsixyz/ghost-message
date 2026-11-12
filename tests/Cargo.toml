@@ -23,6 +23,10 @@ path = "session.rs"
 name = "magicblock"
 path = "magicblock.rs"
 
+[[test]]
+name = "privacy"
+path = "privacy.rs"
+
 [dev-dependencies]
 litesvm = "0.18.1"
 # Not used directly. litesvm 0.18 is built against Agave 4.3 and does not compile against 4.4;
