@@ -20,3 +20,4 @@ solana-address = { version = "~2.7", features = ["curve25519"] }
 solana-keypair = "3.1.2"
 solana-signer = "3.0.1"
 solana-clock = "~3.2"
+solana-account = "4.3"

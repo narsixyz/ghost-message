@@ -7,6 +7,7 @@ use crate::{
     utils::{
         accounts::{now, require_owned_by, require_signer},
         data::DataReader,
+        session::actor,
     },
 };
 
@@ -17,8 +18,9 @@ use crate::{
 /// with NaCl `box`.
 ///
 /// ## Accounts
-/// 0. `[signer]` creator or guest (phase 2: or that member's session key)
+/// 0. `[signer]` creator or guest, or that member's session key
 /// 1. `[writable]` room — status `Joined`, not expired
+/// 2. `[]` session_token — optional; required when account 0 is a session key
 ///
 /// ## Instruction data
 /// | Offset | Size | Field |
@@ -33,6 +35,7 @@ use crate::{
 /// - `Unauthorized` (`0x0`): signer is not a member
 /// - `InvalidRoomStatus` (`0x1`): not `Joined`
 /// - `RoomExpired` (`0x2`), `InvalidMessageKind` (`0x6`), `InvalidMessageLength` (`0x7`)
+/// - `InvalidSessionToken` (`0x9`), `SessionExpired` (`0xa`)
 pub fn send_message(program_id: &Address, accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
     let mut reader = DataReader::new(data);
     let message_kind = reader.u8()?;
@@ -48,7 +51,7 @@ pub fn send_message(program_id: &Address, accounts: &mut [AccountView], data: &[
         return Err(GhostError::InvalidMessageLength.into());
     }
 
-    let [signer, room, ..] = accounts else {
+    let [signer, room, rest @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
     require_signer(signer)?;
@@ -59,14 +62,16 @@ pub fn send_message(program_id: &Address, accounts: &mut [AccountView], data: &[
     if r.status != status::JOINED {
         return Err(GhostError::InvalidRoomStatus.into());
     }
-    let from = if signer.address() == &r.creator {
+    let now = now()?;
+    let actor = actor(program_id, signer, rest.first(), now)?;
+    let from = if actor == r.creator {
         sender::CREATOR
-    } else if signer.address() == &r.guest {
+    } else if actor == r.guest {
         sender::GUEST
     } else {
         return Err(GhostError::Unauthorized.into());
     };
-    if r.is_expired(now()?) {
+    if r.is_expired(now) {
         return Err(GhostError::RoomExpired.into());
     }
 

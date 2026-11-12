@@ -23,6 +23,11 @@ pub enum GhostError {
     InvalidMessageLength = 7,
     /// Arithmetic overflowed.
     MathOverflow = 8,
+    /// The session token is not a valid `gpl_session` token from a member to this signer for
+    /// this program (wrong owner, size, discriminator, target program, signer, or address).
+    InvalidSessionToken = 9,
+    /// The session token has expired (`now >= valid_until`).
+    SessionExpired = 10,
 }
 
 impl From<GhostError> for ProgramError {

@@ -2,7 +2,7 @@
 
 Private messages. Confidential payments. Solana.
 
-As of 2026-11-13. Phase 1 is implemented: the room logic in `program/`, with direct signers and LiteSVM tests (`tests/tests/room.rs`). MagicBlock, session keys and payments are still design only.
+As of 2026-11-13. Phases 1–2 are implemented: the room logic and session keys in `program/`, with LiteSVM tests (`tests/tests/room.rs`, `tests/tests/session.rs`; session tests run against the real `gpl_session` program dumped from devnet). MagicBlock and payments are still design only.
 
 ## 1. The idea
 
@@ -193,7 +193,8 @@ The total is 4,248 bytes. `kind` is 0 for text, 1 for a payment note and 2 for a
 
 **Authorization helper (`actor`)** for instructions 3–5:
 - Accounts are `[signer, room]`, optionally followed by `session_token`.
-- With a token: check it as in section 3.3 with `target_program = our program id` and `session_signer = signer`. Then `actor = token.authority`.
+- With a token: check it as in section 3.3 with `target_program = our program id` and `session_signer = signer`. Then `actor = token.authority`. V1 and V2 tokens are both accepted. A token that is passed but invalid is an error (`InvalidSessionToken` / `SessionExpired`), never a fallback to the signer.
+- Clients should create **V2** sessions: anyone can revoke a V1 token at any time, only the authority can revoke an active V2 token.
 - Without a token: `actor = signer`.
 - Then `actor` must be the creator or the guest, as the instruction requires.
 
@@ -248,7 +249,7 @@ The two steps can fail independently: the payment can land without the note, or 
 | --- | --- | --- |
 | 0 | Scaffold (**done**) | Pinocchio 0.12, SBPF v3, LiteSVM v1 tests pass |
 | 1 | Room logic without MagicBlock (**done**) | `CreateRoom`, `OpenRoom` (no CPI yet), `JoinRoom`, `SendMessage`, `CloseRoom` with direct signers; LiteSVM tests for every auth and status error, ring wrap-around, expiry |
-| 2 | Session keys | `actor` helper; LiteSVM tests with a hand-made token account (wrong owner, wrong PDA, expired, wrong target program, other user's token) |
+| 2 | Session keys (**done**) | `actor` helper; LiteSVM tests with a hand-made token account (wrong owner, wrong PDA, expired, wrong target program, other user's token) |
 | 3 | MagicBlock | Port `magicblock.rs` from cyphers; delegate test with `delegation_program.so`; then a TypeScript e2e on `mb-stack`: two wallets, session keys, private reads through the QFS, a non-member gets nothing. Answers questions 1–6 |
 | 4 | Helius payment | Register B, deposit, private transfer A→B, B syncs; `kind = 1`/`2` messages; on devnet |
 | 5 | Devnet end-to-end | Devnet TEE (`verifyTeeRpcIntegrity` for real) + Helius devnet, one full scenario. A minimal CLI client, not a complex frontend |

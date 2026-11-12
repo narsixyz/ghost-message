@@ -1,7 +1,8 @@
 //! GhostMessage program: temporary two-person chat rooms with client-side encrypted messages.
 //! Design: `docs/research.md`.
 //!
-//! Phase 1: room logic with direct signers. No MagicBlock CPIs and no session keys yet.
+//! Phases 1–2: room logic, plus session keys for `JoinRoom`, `SendMessage` and `CloseRoom`
+//! (`utils::session`). No MagicBlock CPIs yet.
 //!
 //! | Discriminator | Instruction | Runs on | Status |
 //! |---|---|---|---|

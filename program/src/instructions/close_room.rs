@@ -7,6 +7,7 @@ use crate::{
     utils::{
         accounts::{now, require_owned_by, require_signer},
         data::DataReader,
+        session::actor,
     },
 };
 
@@ -21,8 +22,9 @@ use crate::{
 /// - anyone, once the room has expired.
 ///
 /// ## Accounts
-/// 0. `[signer]` closer (phase 2: or a member's session key)
+/// 0. `[signer]` closer, or a member's session key
 /// 1. `[writable]` room — not `Closed`
+/// 2. `[]` session_token — optional; required when account 0 is a session key
 ///
 /// ## Instruction data
 /// None.
@@ -32,10 +34,11 @@ use crate::{
 /// - `InvalidAccountOwner`, `InvalidAccountData`: not a room
 /// - `Unauthorized` (`0x0`): signer is not a member and the room has not expired
 /// - `InvalidRoomStatus` (`0x1`): already `Closed`
+/// - `InvalidSessionToken` (`0x9`), `SessionExpired` (`0xa`)
 pub fn close_room(program_id: &Address, accounts: &mut [AccountView], data: &[u8]) -> ProgramResult {
     DataReader::new(data).finish()?;
 
-    let [signer, room, ..] = accounts else {
+    let [signer, room, rest @ ..] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
     require_signer(signer)?;
@@ -46,9 +49,11 @@ pub fn close_room(program_id: &Address, accounts: &mut [AccountView], data: &[u8
     if r.status == status::CLOSED {
         return Err(GhostError::InvalidRoomStatus.into());
     }
-    // The guest is zero while `Created`, and the zero address can't sign.
-    let is_member = signer.address() == &r.creator || signer.address() == &r.guest;
-    if !is_member && !r.is_expired(now()?) {
+    let now = now()?;
+    let actor = actor(program_id, signer, rest.first(), now)?;
+    // The guest is zero while `Created`, and no token or signer resolves to the zero address.
+    let is_member = actor == r.creator || actor == r.guest;
+    if !is_member && !r.is_expired(now) {
         return Err(GhostError::Unauthorized.into());
     }
 

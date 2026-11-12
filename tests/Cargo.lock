@@ -1164,6 +1164,7 @@ name = "ghost-message-tests"
 version = "0.1.0"
 dependencies = [
  "litesvm",
+ "solana-account",
  "solana-address 2.7.0",
  "solana-clock 3.2.1",
  "solana-instruction 3.5.1",
