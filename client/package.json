@@ -1,0 +1,23 @@
+{
+  "name": "ghost-message-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e:local": "bun run scripts/e2e-local.ts",
+    "payment": "node --env-file-if-exists=../.env --import tsx scripts/payment-devnet.ts",
+    "ghost": "node --env-file-if-exists=../.env --import tsx scripts/ghost.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@heliuslabs/spr": "0.9.0-alpha",
+    "@magicblock-labs/ephemeral-rollups-sdk": "0.17.3",
+    "@solana/kit": "8.6.0",
+    "@solana/web3.js": "1.98.4",
+    "tweetnacl": "1.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
