@@ -4,6 +4,9 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 publish = false
+# Built with the program from the root workspace (`cargo build-sbf`), not the tests workspace
+# this folder sits in.
+workspace = "../.."
 
 # Test-only program. LiteSVM loads it at the permission program and Magic program addresses,
 # which only exist inside a MagicBlock ER, so the tests can check the exact CPI each instruction

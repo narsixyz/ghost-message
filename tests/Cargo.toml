@@ -3,9 +3,25 @@ name = "ghost-message-tests"
 version = "0.1.0"
 edition = "2024"
 publish = false
+# The test files sit directly in this folder (no tests/tests/), so list them below.
+autotests = false
 
 # Own workspace = own Cargo.lock. LiteSVM's Solana/Agave versions never touch the program.
+# cpi-recorder/ is an on-chain test program; it belongs to the root workspace.
 [workspace]
+exclude = ["cpi-recorder"]
+
+[[test]]
+name = "room"
+path = "room.rs"
+
+[[test]]
+name = "session"
+path = "session.rs"
+
+[[test]]
+name = "magicblock"
+path = "magicblock.rs"
 
 [dev-dependencies]
 litesvm = "0.18.1"

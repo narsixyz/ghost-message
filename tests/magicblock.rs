@@ -3,7 +3,7 @@
 //! - `DelegateRoom` runs against the **real** delegation program (`fixtures/delegation_program.so`,
 //!   dumped from devnet).
 //! - The permission program and the Magic program only exist inside a MagicBlock ER. Here a
-//!   recorder (`test-programs/cpi-recorder`) sits at their addresses and logs every CPI it
+//!   recorder (`tests/cpi-recorder`) sits at their addresses and logs every CPI it
 //!   receives, so these tests check the exact bytes, account order and signer/writable flags our
 //!   program sends. Whether the real programs accept them is checked by the e2e on `mb-stack`.
 //! - `ProcessUndelegation` needs a buffer signed by the delegation program, which only the real

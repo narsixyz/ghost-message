@@ -14,7 +14,7 @@ use solana_transaction::{InstructionError, TransactionError, versioned::Versione
 
 pub const PROGRAM_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/ghost_message.so");
 /// Test-only recorder loaded at the permission and Magic program addresses (see
-/// `test-programs/cpi-recorder`).
+/// `tests/cpi-recorder`).
 pub const RECORDER_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/deploy/cpi_recorder.so");
 /// MagicBlock delegation program dumped from devnet.
 pub const DELEGATION_SO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/delegation_program.so");
