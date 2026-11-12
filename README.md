@@ -3,9 +3,9 @@
 Private messages (MagicBlock PER + session keys) and confidential payments (Helius Privacy Rings)
 on Solana. Pinocchio 0.12, built as SBPF v3, tested in LiteSVM with v1 transactions.
 
-Status: phases 1–2 done, phase 3 in progress. `program/` has the full room lifecycle (create,
-delegate, open with a private permission, join, send, close, undelegate, reclaim) and MagicBlock
-session keys. The e2e on a local MagicBlock stack is next.
+Status: phases 1–5 done. The program is on devnet at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`
+and one full scenario runs end to end: a private room on MagicBlock's TEE (session keys, NaCl-box
+encrypted messages) carrying a confidential Helius Privacy Rings payment.
 Design, findings and roadmap: [docs/research.md](docs/research.md).
 Per-phase notes: [docs/phases/](docs/phases/README.md).
 
@@ -13,4 +13,19 @@ Per-phase notes: [docs/phases/](docs/phases/README.md).
 cargo build-sbf --tools-version v1.58 --arch v3      # program + test-only cpi-recorder
 xxd -s 0x30 -l 4 target/deploy/ghost_message.so   # 0300 0000
 cd tests && cargo test
+```
+
+## Layout
+
+```text
+program/              the on-chain program (Pinocchio, no_std)
+tests/                LiteSVM tests: own Cargo workspace and lockfile
+  room.rs             phase 1: rooms, messages, close
+  session.rs          phase 2: session keys (real gpl_session program)
+  magicblock.rs       phase 3: delegation, permissions, undelegation
+  common/mod.rs       shared harness
+  cpi-recorder/       test-only on-chain program standing in for MagicBlock's ER programs
+  fixtures/           programs dumped from devnet (delegation, session keys)
+client/               TypeScript client, mb-stack e2e, devnet payment and CLI (see client/README.md)
+docs/                 research.md and one file per phase in docs/phases/
 ```

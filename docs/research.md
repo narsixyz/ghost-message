@@ -2,7 +2,7 @@
 
 Private messages. Confidential payments. Solana.
 
-As of 2026-11-13. Phases 1–2 are implemented: the room logic and session keys in `program/`, with LiteSVM tests (`tests/tests/room.rs`, `tests/tests/session.rs`; session tests run against the real `gpl_session` program dumped from devnet). MagicBlock and payments are still design only.
+As of 2026-11-13. Phases 1–5 are implemented and run on devnet: the program is deployed at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`, and one full scenario (private room on the MagicBlock TEE + a Helius private payment) passes end to end. Per-phase results are in [`phases/`](phases/README.md).
 
 ## 1. The idea
 
@@ -221,7 +221,7 @@ The two steps can fail independently: the payment can land without the note, or 
 
 | Observer | Sees | Doesn't see |
 | --- | --- | --- |
-| Anyone on Solana | creator made a room (`CreateRoom`, `DelegateRoom`), session token creation, the final empty room after undelegation, **Helius transfer A → B** | guest, messages, amount, asset |
+| Anyone on Solana | creator made a room (`CreateRoom`, `DelegateRoom`), session token creation, the final empty room after undelegation, **Helius transfer A → B** (A signs; B's address is in the instruction data as the view tag — measured in phase 4) | guest, messages, amount, asset |
 | Anyone on the PER endpoint who isn't a member | that the room account exists | room data, room transactions (if `TX_MESSAGE`/`TX_LOGS` are withheld) |
 | Members (creator, guest) | everything in the room | – |
 | TEE operator (in theory, if the TEE is broken) | room metadata, who sends when | message text (client-side encryption) |
@@ -229,6 +229,8 @@ The two steps can fail independently: the payment can land without the note, or 
 **The biggest privacy gap:** the Default Ring's public sender and recipient link A and B on Solana. That undoes the hiding of room membership for any room with a payment. This must be written up, not hidden. Options later: an anonymous Custom Ring, or paying through an intermediary note.
 
 ## 5. Open questions (to settle in a spike before building)
+
+**All answered in phase 3** (mb-stack) and confirmed on devnet in phase 5; see the table in [`phases/phase-3-magicblock.md`](phases/phase-3-magicblock.md#research-5-answers). In short: session keys write through the member's authenticated connection without being permission members (1); tokens are readable in the ER and a revoke is seen immediately (2); the ER rejects v1 transactions (3); session keys need no lamports on the ER (4); the permission format is `9 + 33·n` (5); the `OpenRoom` transaction is stripped for non-members (6).
 
 1. **Session key through the TEE endpoint.**
    - The read token belongs to a wallet, and permission members are wallets.
@@ -251,9 +253,9 @@ The two steps can fail independently: the payment can land without the note, or 
 | 0 | Scaffold (**done**) | Pinocchio 0.12, SBPF v3, LiteSVM v1 tests pass |
 | 1 | Room logic without MagicBlock (**done**) | `CreateRoom`, `OpenRoom` (no CPI yet), `JoinRoom`, `SendMessage`, `CloseRoom` with direct signers; LiteSVM tests for every auth and status error, ring wrap-around, expiry |
 | 2 | Session keys (**done**) | `actor` helper; LiteSVM tests with a hand-made token account (wrong owner, wrong PDA, expired, wrong target program, other user's token) |
-| 3 | MagicBlock (**in progress**) | Port `magicblock.rs` from cyphers; delegate test with `delegation_program.so`; then a TypeScript e2e on `mb-stack`: two wallets, session keys, private reads through the QFS, a non-member gets nothing. Answers questions 1–6 |
-| 4 | Helius payment | Register B, deposit, private transfer A→B, B syncs; `kind = 1`/`2` messages; on devnet |
-| 5 | Devnet end-to-end | Devnet TEE (`verifyTeeRpcIntegrity` for real) + Helius devnet, one full scenario. A minimal CLI client, not a complex frontend |
+| 3 | MagicBlock (**done**) | Port `magicblock.rs` from cyphers; delegate test with `delegation_program.so`; then a TypeScript e2e on `mb-stack`: two wallets, session keys, private reads through the QFS, a non-member gets nothing. Answers questions 1–6 |
+| 4 | Helius payment (**done**) | Register B, deposit, private transfer A→B, B syncs; `kind = 1`/`2` messages; on devnet |
+| 5 | Devnet end-to-end (**done**) | Devnet TEE (`verifyTeeRpcIntegrity` for real) + Helius devnet, one full scenario. A minimal CLI client, not a complex frontend |
 | 6 | Article | "GhostMessage: building private messaging and payments on Solana with MagicBlock and Helius Privacy Rings", from the research log |
 
 **Out of scope:** group chats, file uploads, history indexing, a custom E2EE protocol, custom ZK circuits, a complex frontend, notifications.
