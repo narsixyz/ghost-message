@@ -5,7 +5,7 @@
 // Both are NaCl-box encrypted exactly as they are in a room (phase 5 sends them through one).
 //
 //   HELIUS_API_KEY in ../.env; funded from the Solana CLI wallet (~/.config/solana/id.json).
-//   npm run payment
+//   bun run payment
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { homedir } from "node:os";
 import * as cr from "../src/crypto";

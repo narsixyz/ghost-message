@@ -1,12 +1,12 @@
 // GhostMessage CLI (devnet): private rooms on MagicBlock's TEE + private payments with Helius.
 //
-//   npm run ghost -- scenario                 full two-wallet run (phase 5)
-//   npm run ghost -- create <room_id>         create + delegate a room
-//   npm run ghost -- open <room> <guest>      set the guest, create the private permission
-//   npm run ghost -- join <room>              join as the guest
-//   npm run ghost -- send <room> <text...>    encrypt and send a text message
-//   npm run ghost -- read <room>              decrypt the room as a member
-//   npm run ghost -- close <room>             wipe the room, then undelegate it
+//   bun run ghost -- scenario                 full two-wallet run (phase 5)
+//   bun run ghost -- create <room_id>         create + delegate a room
+//   bun run ghost -- open <room> <guest>      set the guest, create the private permission
+//   bun run ghost -- join <room>              join as the guest
+//   bun run ghost -- send <room> <text...>    encrypt and send a text message
+//   bun run ghost -- read <room>              decrypt the room as a member
+//   bun run ghost -- close <room>             wipe the room, then undelegate it
 //
 // Wallet: --key <path> (default ~/.config/solana/id.json). HELIUS_API_KEY in ../.env.
 // Endpoints: BASE_URL (default Helius devnet, else api.devnet.solana.com),

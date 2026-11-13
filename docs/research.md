@@ -2,7 +2,7 @@
 
 Private messages. Confidential payments. Solana.
 
-As of 2026-11-13. Phases 1–5 are implemented and run on devnet: the program is deployed at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`, and one full scenario (private room on the MagicBlock TEE + a Helius private payment) passes end to end. Per-phase results are in [`phases/`](phases/README.md).
+As of 2026-11-13. Phases 1–5 are implemented and run on devnet: the program is deployed at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`, and one full scenario (private room on the MagicBlock TEE + a Helius private payment) passes end to end.
 
 ## 1. The idea
 
@@ -110,7 +110,7 @@ Messaging and payments use two **separate** privacy systems:
 - Undelegation charges a 0.003 SOL session fee, plus 0.001 SOL per commit after the first.
 
 **Local stack:**
-- Install with `npm install -g @magicblock-labs/ephemeral-validator@latest` (1.1.1). `mb-stack --reset` then runs three services:
+- Install with `bun add -g @magicblock-labs/ephemeral-validator@latest` (1.1.1). `mb-stack --reset` then runs three services:
   - Base layer: `mb-test-validator` on 8899.
   - ER: `ephemeral-validator` on 7799.
   - TEE ingress emulator: the query filtering service (QFS) on 6699.
@@ -230,7 +230,7 @@ The two steps can fail independently: the payment can land without the note, or 
 
 ## 5. Open questions (to settle in a spike before building)
 
-**All answered in phase 3** (mb-stack) and confirmed on devnet in phase 5; see the table in [`phases/phase-3-magicblock.md`](phases/phase-3-magicblock.md#research-5-answers). In short: session keys write through the member's authenticated connection without being permission members (1); tokens are readable in the ER and a revoke is seen immediately (2); the ER rejects v1 transactions (3); session keys need no lamports on the ER (4); the permission format is `9 + 33·n` (5); the `OpenRoom` transaction is stripped for non-members (6).
+**All answered in phase 3** (mb-stack) and confirmed on devnet in phase 5. In short: session keys write through the member's authenticated connection without being permission members (1); tokens are readable in the ER and a revoke is seen immediately (2); the ER rejects v1 transactions (3); session keys need no lamports on the ER (4); the permission format is `9 + 33·n` (5); the `OpenRoom` transaction is stripped for non-members (6).
 
 1. **Session key through the TEE endpoint.**
    - The read token belongs to a wallet, and permission members are wallets.
@@ -241,7 +241,7 @@ The two steps can fail independently: the payment can land without the note, or 
    - How quickly does a revoke on Solana reach the ER?
 3. **v1 transactions on the ER.** Does `ephemeral-validator` 1.1.1 or the TEE endpoint accept v1 (`VersionedMessage::V1`) transactions? If not, ER transactions use v0 and only Solana transactions use v1.
 4. **Fee payer in the ER.** ER transactions cost 0. Does the session signer still need to exist with lamports in the ER to act as fee payer?
-5. **Permission with two members.** ~~Confirm the wire format~~ **Answered:** `u64 6 | is_private | (flags, pubkey)*`, no count, `9 + 33·n` bytes (`ephemeral-rollups-pinocchio` 0.17.3). See `phases/phase-3-magicblock.md`.
+5. **Permission with two members.** ~~Confirm the wire format~~ **Answered:** `u64 6 | is_private | (flags, pubkey)*`, no count, `9 + 33·n` bytes (`ephemeral-rollups-pinocchio` 0.17.3).
 6. **Transaction visibility.** Is the `OpenRoom` transaction message (it carries the guest's key) hidden from people who aren't members? Probe it with the QFS, the way cyphers' `PRIVATE=1` run did.
 7. **Two local stacks.** MagicBlock needs `mb-stack` (its own base validator). Helius needs surfpool + Photon + prover (`zolana dev artifacts`). They don't share a base chain locally, so the joined flow can only be tested on **devnet**. Both live on Solana devnet.
 8. **Session program locally.** `mb-test-validator` must load `KeyspM...`: dump it from devnet like the delegation program.
@@ -259,8 +259,6 @@ The two steps can fail independently: the payment can land without the note, or 
 | 6 | Article | "GhostMessage: building private messaging and payments on Solana with MagicBlock and Helius Privacy Rings", from the research log |
 
 **Out of scope:** group chats, file uploads, history indexing, a custom E2EE protocol, custom ZK circuits, a complex frontend, notifications.
-
-Per-phase notes (what was built, why, learnings, resources): [`phases/`](phases/README.md).
 
 ## 7. Research log template
 

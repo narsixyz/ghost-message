@@ -2,7 +2,7 @@
 //
 // What it hides: asset and amount of a private transfer. What it does NOT hide: that the sender
 // paid the recipient (both are public on Solana). Deposits from a public balance reveal the
-// amount. See docs/phases/phase-4-helius-payment.md.
+// amount.
 //
 // Runs on Node (the SDK targets Node ≥ 24); everything is a Solana v1 transaction.
 import {
@@ -53,8 +53,23 @@ import type { Keypair } from "@solana/web3.js";
 export type SprClient = Awaited<ReturnType<typeof createSprClient>>;
 export const SOL = SOL_MINT;
 
+/**
+ * The prover's TEE channel encrypts requests with HPKE over X25519 through WebCrypto. Bun only
+ * supports X25519 `deriveBits` from 1.4; older versions fail deep in the SDK with a bare
+ * `CLIENT_UNEXPECTED`, so fail early with the reason instead.
+ */
+function requireX25519WebCrypto() {
+  const bun = (globalThis as { Bun?: { version: string } }).Bun;
+  if (!bun) return;
+  const [major, minor] = bun.version.split(".").map(Number);
+  if (major < 1 || (major === 1 && minor < 4)) {
+    throw new Error(`Bun ${bun.version} lacks WebCrypto X25519 deriveBits, which the Helius prover needs. Run \`bun upgrade\` (>= 1.4).`);
+  }
+}
+
 /** Devnet Helius endpoint: Solana RPC + Photon indexer + attested TEE prover behind one key. */
 export async function connectHelius(apiKey: string): Promise<SprClient> {
+  requireX25519WebCrypto();
   await initializePoseidon();
   return createSprClient({
     solanaRpcUrl: `https://devnet.helius-rpc.com/?api-key=${encodeURIComponent(apiKey)}`,

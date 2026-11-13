@@ -1,6 +1,6 @@
 # GhostMessage client
 
-TypeScript client for the GhostMessage program, plus the e2e runs for phases 3–5.
+TypeScript client for the GhostMessage program, plus the local MagicBlock e2e, the devnet payment run and the devnet scenario.
 
 | File | What |
 | --- | --- |
@@ -39,10 +39,10 @@ Needs `HELIUS_API_KEY=...` in `../.env` (gitignored) and a funded Solana CLI wal
 is deployed on devnet at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`.
 
 ```sh
-npm run payment                         # phase 4: Helius payment only
-npm run ghost -- scenario               # phase 5: room on the TEE + payment, end to end
-npm run ghost -- scenario --no-pay      # MagicBlock half only (no Helius key needed)
-npm run ghost -- read <room> --key <wallet.json>
+bun run payment                         # phase 4: Helius payment only
+bun run ghost -- scenario               # phase 5: room on the TEE + payment, end to end
+bun run ghost -- scenario --no-pay      # MagicBlock half only (no Helius key needed)
+bun run ghost -- read <room> --key <wallet.json>
 ```
 
-The Helius SDK targets Node ≥ 24, so these run on Node with `tsx`; the local e2e runs on Bun.
+Everything runs on Bun **1.4 or newer** (`bun install`, `bun run <script>`); scripts load `../.env` with `--env-file`. Older Bun lacks WebCrypto X25519 `deriveBits`, which the Helius prover's encrypted (HPKE) requests need.

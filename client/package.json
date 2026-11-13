@@ -2,11 +2,12 @@
   "name": "ghost-message-client",
   "private": true,
   "type": "module",
+  "engines": { "bun": ">=1.4.0" },
   "scripts": {
     "e2e:local": "bun run scripts/e2e-local.ts",
-    "payment": "node --env-file-if-exists=../.env --import tsx scripts/payment-devnet.ts",
-    "ghost": "node --env-file-if-exists=../.env --import tsx scripts/ghost.ts",
-    "typecheck": "tsc --noEmit"
+    "payment": "bun --env-file=../.env scripts/payment-devnet.ts",
+    "ghost": "bun --env-file=../.env scripts/ghost.ts",
+    "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {
     "@heliuslabs/spr": "0.9.0-alpha",
@@ -17,7 +18,6 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }
 }
