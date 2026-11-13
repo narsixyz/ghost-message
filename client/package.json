@@ -7,6 +7,7 @@
     "e2e:local": "bun run scripts/e2e-local.ts",
     "payment": "bun --env-file=../.env scripts/payment-devnet.ts",
     "ghost": "bun --env-file=../.env scripts/ghost.ts",
+    "held": "bun --env-file=../.env scripts/held-payment-devnet.ts",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {

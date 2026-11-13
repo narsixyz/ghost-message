@@ -60,6 +60,21 @@ export const sessionTokenV2 = (signer: PublicKey, authority: PublicKey) =>
     SESSION_PROGRAM,
   );
 
+/**
+ * Payment-authority PDA `["payment", payer, recipient, deadline i64 LE]`: owns the private funds of
+ * a held payment. Only `ClaimPayment` (recipient) and `RefundPayment` (payer, after the deadline)
+ * make the program sign for it. Returns the address and the canonical bump the instructions take.
+ */
+export const paymentAuthority = (payer: PublicKey, recipient: PublicKey, deadline: bigint) =>
+  PublicKey.findProgramAddressSync(
+    [Buffer.from("payment"), payer.toBuffer(), recipient.toBuffer(), i64(deadline)],
+    programId,
+  );
+
+/** `ClaimPayment` (8) / `RefundPayment` (9) header: `counterparty | deadline i64 | bump`. */
+export const paymentHeader = (discriminator: 8 | 9, counterparty: PublicKey, deadline: bigint, bump: number) =>
+  Buffer.concat([Buffer.from([discriminator]), counterparty.toBuffer(), i64(deadline), Buffer.from([bump])]);
+
 const meta = (pubkey: PublicKey, isSigner: boolean, isWritable: boolean): AccountMeta => ({
   pubkey,
   isSigner,

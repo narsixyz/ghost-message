@@ -9,9 +9,11 @@ TypeScript client for the GhostMessage program, plus the local MagicBlock e2e, t
 | `src/net.ts` | Legacy transaction sending, token-gated PER connections, polling helpers |
 | `src/v1.ts` | v1 transactions through `@solana/kit` (Solana only: the ER rejects v1) |
 | `src/payment.ts` | Helius Privacy Rings: register, deposit, private transfer, receipt check, balance sync |
+| `src/held-payment.ts` | Held payments: lock private funds under the GhostMessage payment PDA, then `ClaimPayment` / `RefundPayment` (program CPIs SPP `transact`, PDA-signed) |
 | `scripts/e2e-local.ts` | Phase 3: full lifecycle on a local MagicBlock stack + open-question probes |
 | `scripts/payment-devnet.ts` | Phase 4: confidential payment between two wallets on devnet |
 | `scripts/ghost.ts` | Phase 5: devnet CLI (`scenario`, `create`, `open`, `join`, `send`, `read`, `close`) |
+| `scripts/held-payment-devnet.ts` | Held payment on devnet: lock, rejected early refund, rejected stranger claim, claim, refund after the deadline |
 
 ```sh
 bun install
@@ -43,6 +45,16 @@ bun run payment                         # phase 4: Helius payment only
 bun run ghost -- scenario               # phase 5: room on the TEE + payment, end to end
 bun run ghost -- scenario --no-pay      # MagicBlock half only (no Helius key needed)
 bun run ghost -- read <room> --key <wallet.json>
+bun run held                            # lock → claim, lock → refund, through the program
 ```
+
+### Held payments
+
+The payer locks funds with a normal private transfer to `ShieldedAddress.forPda(pda)`, where
+`pda = ["payment", payer, recipient, deadline]` under the GhostMessage program. SPP only spends
+a UTXO its owner signs for, and only GhostMessage can sign for that PDA, so the program decides:
+the recipient can claim at any time, the payer can refund after the deadline. The PDA's
+nullifier and viewing keys come from the payer's and recipient's viewing keys (ECDH, then HKDF
+with the PDA in the info tag), so both of them, and nobody else, can find and spend the UTXO.
 
 Everything runs on Bun **1.4 or newer** (`bun install`, `bun run <script>`); scripts load `../.env` with `--env-file`. Older Bun lacks WebCrypto X25519 `deriveBits`, which the Helius prover's encrypted (HPKE) requests need.

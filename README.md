@@ -5,7 +5,10 @@ on Solana. Pinocchio 0.12, built as SBPF v3, tested in LiteSVM with v1 transacti
 
 Status: the room program is on devnet at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`
 and one full scenario runs end to end: a private room on MagicBlock's TEE (session keys, NaCl-box
-encrypted messages) carrying a confidential Helius Privacy Rings payment.
+encrypted messages) carrying a confidential Helius Privacy Rings payment. Payments can also be
+held by the program: private funds owned by a GhostMessage PDA that only `ClaimPayment`
+(recipient) or `RefundPayment` (payer, after a deadline) release, through a CPI into the Helius
+Privacy Program signed with `invoke_signed` (`client/`: `bun run held`).
 Design, findings and roadmap: [docs/research.md](docs/research.md).
 
 ```sh
