@@ -2,7 +2,7 @@
 
 Private messages. Confidential payments. Solana.
 
-As of 2026-11-13. Phases 1–5 are implemented and run on devnet: the program is deployed at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`, and one full scenario (private room on the MagicBlock TEE + a Helius private payment) passes end to end.
+As of 2026-11-13. Phases 1–5 are implemented and run on devnet: the program is deployed at `BXofFc5nXaU6skjEbZ8sJQn9gSgsyMFg9kVvpiNVCW4V`, and one full scenario (private room on the MagicBlock TEE + a Helius private payment) passes end to end. Since then the program also holds private payments itself: `ClaimPayment` and `RefundPayment` release Privacy Rings funds owned by a payment PDA through a CPI into the Helius Privacy Program (see the README).
 
 ## 1. The idea
 

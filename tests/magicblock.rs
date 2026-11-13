@@ -1,4 +1,4 @@
-//! Phase 3: MagicBlock CPIs.
+//! MagicBlock CPIs.
 //!
 //! - `DelegateRoom` runs against the **real** delegation program (`fixtures/delegation_program.so`,
 //!   dumped from devnet).

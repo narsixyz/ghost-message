@@ -1,8 +1,8 @@
-// Phase 4: a confidential payment between two wallets on devnet with Helius Privacy Rings,
+// A confidential payment between two wallets on devnet with Helius Privacy Rings,
 // carried by the two GhostMessage message formats it needs:
 //   kind = 2  B → A  B's shielded address
 //   kind = 1  A → B  payment note {tx signature, mint, amount}
-// Both are NaCl-box encrypted exactly as they are in a room (phase 5 sends them through one).
+// Both are NaCl-box encrypted exactly as they are in a room (`bun run ghost -- scenario` sends them through one).
 //
 //   HELIUS_API_KEY in ../.env; funded from the Solana CLI wallet (~/.config/solana/id.json).
 //   bun run payment

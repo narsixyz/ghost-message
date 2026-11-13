@@ -1,4 +1,4 @@
-// Phase 3 e2e: the whole room lifecycle on a real local MagicBlock stack, plus probes for the
+// Local e2e: the whole room lifecycle on a real local MagicBlock stack, plus probes for the
 // open questions in docs/research.md §5.
 //
 //   mb-stack: base validator :8899, ephemeral validator :7799, query filtering service :6699

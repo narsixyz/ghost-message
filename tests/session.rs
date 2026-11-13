@@ -1,4 +1,4 @@
-//! Phase 2: session keys.
+//! Session keys.
 //!
 //! Happy paths and lifecycle (create, expire, revoke) use the **real** `gpl_session` program
 //! (`fixtures/session_keys.so`, dumped from devnet), so the token bytes our program reads are the

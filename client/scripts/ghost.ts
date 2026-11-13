@@ -1,6 +1,6 @@
 // GhostMessage CLI (devnet): private rooms on MagicBlock's TEE + private payments with Helius.
 //
-//   bun run ghost -- scenario                 full two-wallet run (phase 5)
+//   bun run ghost -- scenario                 full two-wallet run: room + payment
 //   bun run ghost -- create <room_id>         create + delegate a room
 //   bun run ghost -- open <room> <guest>      set the guest, create the private permission
 //   bun run ghost -- join <room>              join as the guest

@@ -42,7 +42,7 @@ pub mod sender {
 }
 
 /// MagicBlock ephemeral rent per byte (lamports) and per-account overhead (bytes). Used to
-/// pre-fund the room for the `EphemeralPermission` it pays for on the PER (phase 3).
+/// pre-fund the room for the `EphemeralPermission` it pays for on the PER.
 pub const EPHEMERAL_RENT_PER_BYTE: u64 = 32;
 pub const EPHEMERAL_ACCOUNT_OVERHEAD: u64 = 60;
 
